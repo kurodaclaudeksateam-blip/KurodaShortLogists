@@ -4,23 +4,27 @@ Feed de videos cortos estilo TikTok/Reels para contenido explicativo de la empre
 
 ## Estructura
 
-- `index.html` — Feed publico. Cualquier visitante puede ver los videos activos, dar like y ver el contador de vistas.
-- `admin/index.html` — Panel de administracion en la ruta `/admin`. Pide inicio de sesion (Supabase Auth) antes de mostrar el formulario de carga.
+- `index.html` — Feed publico. Al entrar por primera vez pregunta el area del usuario (localStorage recuerda la eleccion) y muestra los videos de esa area en orden aleatorio; cualquier visitante puede ver, dar like, ver el contador de vistas y buscar por tema/descripcion.
+- `admin/index.html` — Panel de control en la ruta `/admin`, protegido con Supabase Auth. Pestanas: Subir video, Videos publicados, Areas, Temas y Analiticas (top 100 por vistas o likes).
 - `assets/js/supabase-client.js` — Configuracion del cliente de Supabase (URL + clave publica `anon`, protegida por Row Level Security).
-- `assets/js/app.js` — Logica del feed publico (autoplay al hacer scroll, likes, vistas, controles de reproduccion).
-- `assets/js/admin.js` — Logica del panel admin (login, subida de video, listado y borrado).
+- `assets/js/app.js` — Logica del feed publico (selector de area, busqueda, autoplay al hacer scroll, likes, vistas, controles de reproduccion).
+- `assets/js/admin.js` — Logica del panel admin (login, pestanas, subida de video, catalogos de areas/temas, analiticas).
 - `assets/css/style.css` — Estilos compartidos.
 
 ## Backend (Supabase)
 
 Proyecto: `gk-control-operativo-entregas`.
 
-Se creo una tabla y un bucket **nuevos y aislados**, sin modificar ninguna tabla existente del proyecto:
+Se crearon tablas y un bucket **nuevos y aislados**, sin modificar ninguna tabla existente del proyecto:
 
 - Tabla `public.short_videos` (RLS activo):
   - Lectura publica solo de filas con `is_active = true`.
   - Insertar/actualizar/borrar solo permitido a usuarios autenticados (el admin).
+  - Columnas `area` y `tema` para clasificar e indexar los videos.
   - Funciones `increment_video_views` / `increment_video_likes` (RPC `SECURITY DEFINER`) para sumar contadores sin exponer `UPDATE` publico sobre la tabla.
+- Tablas `public.areas` y `public.temas` (catalogo administrable desde el panel):
+  - Lectura publica (la necesita el selector de area al abrir la app).
+  - Alta/baja solo permitida a usuarios autenticados.
 - Bucket de Storage `short-videos` (publico de solo lectura):
   - Lectura publica de los archivos.
   - Subida/borrado de archivos solo permitido a usuarios autenticados.
