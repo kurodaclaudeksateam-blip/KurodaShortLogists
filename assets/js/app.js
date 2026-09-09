@@ -29,8 +29,16 @@ const ICONS = {
     comment: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
     share: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
     rewind: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>',
-    forward: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>'
+    forward: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>',
+    play: '<svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>'
 };
+
+function formatTime(seconds) {
+    if (!isFinite(seconds) || seconds < 0) return '0:00';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+}
 
 let toastTimeout = null;
 function showToast(message) {
@@ -172,7 +180,7 @@ function renderVideos(videos) {
                 <div class="bottom-shadow-overlay"></div>
 
                 <div class="video-info">
-                    ${(item.area || item.tema) ? `<div>${item.area ? `<span class="area-badge">${item.area}</span>` : ''}${item.tema ? `<span class="tema-badge">${item.tema}</span>` : ''}</div>` : ''}
+                    ${(item.area || item.tema) ? `<div>${item.area ? `<span class="area-badge">${item.area}</span>` : ''}${item.tema ? `<button class="tema-badge" data-tema="${escapeAttr(item.tema)}">${item.tema}</button>` : ''}</div>` : ''}
                     <div class="username">KURODA&amp;LOGIST</div>
                     <div class="description">${description}</div>
                 </div>
@@ -196,11 +204,14 @@ function renderVideos(videos) {
                 </div>
 
                 <div class="playback-controls">
-                    <button class="control-btn" data-skip="-5" data-target="${videoId}">${ICONS.rewind}</button>
-                    <div class="progress-bar-container" data-seek-target="${videoId}">
-                        <div class="progress-fill" id="prog_${videoId}"></div>
+                    <div class="time-row" id="time_${item.id}">0:00 / 0:00</div>
+                    <div class="controls-row">
+                        <button class="control-btn" data-skip="-5" data-target="${videoId}">${ICONS.rewind}</button>
+                        <div class="progress-bar-container" data-seek-target="${videoId}">
+                            <div class="progress-fill" id="prog_${item.id}"></div>
+                        </div>
+                        <button class="control-btn" data-skip="5" data-target="${videoId}">${ICONS.forward}</button>
                     </div>
-                    <button class="control-btn" data-skip="5" data-target="${videoId}">${ICONS.forward}</button>
                 </div>
             </div>
         `;
@@ -219,10 +230,16 @@ function renderVideos(videos) {
             if (likeBtn && !likeBtn.classList.contains('liked')) likeVideo(likeBtn.dataset.likeId, likeBtn);
             triggerLikeBurst(wrapper, e.offsetX, e.offsetY);
         });
+        const timeEl = document.getElementById(video.id.replace('vid_', 'time_'));
+        function updateTimeDisplay() {
+            if (timeEl && video.duration) timeEl.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+        }
+        video.addEventListener('loadedmetadata', updateTimeDisplay);
         video.addEventListener('timeupdate', () => {
             const progressId = video.id.replace('vid_', 'prog_');
             const progressBar = document.getElementById(progressId);
             if (progressBar && video.duration) progressBar.style.width = (video.currentTime / video.duration) * 100 + '%';
+            updateTimeDisplay();
         });
 
         wrapper.querySelector('.action-btn[data-like-id]')?.addEventListener('click', function () {
@@ -237,6 +254,11 @@ function renderVideos(videos) {
         wrapper.querySelector('.action-btn[data-comment-id]')?.addEventListener('click', function (e) {
             e.stopPropagation();
             openComments(this.dataset.commentId);
+        });
+
+        wrapper.querySelector('.tema-badge[data-tema]')?.addEventListener('click', function (e) {
+            e.stopPropagation();
+            openTemaGallery(this.dataset.tema);
         });
 
         wrapper.querySelectorAll('.control-btn[data-skip]').forEach(btn => {
@@ -330,6 +352,54 @@ async function loadFeedWithSharedVideo(videoId) {
     const { data: rest } = await restQuery.order('created_at', { ascending: false });
     if (rest && rest.length) renderVideos(shuffleArray(rest));
 }
+
+/* ---------- Galeria por tema ---------- */
+
+const galleryOverlay = document.getElementById('gallery-overlay');
+const galleryTitle = document.getElementById('gallery-title');
+const galleryGrid = document.getElementById('gallery-grid');
+const galleryCloseBtn = document.getElementById('gallery-close-btn');
+
+async function openTemaGallery(tema) {
+    galleryTitle.textContent = tema;
+    galleryGrid.innerHTML = '<div class="gallery-empty">Cargando...</div>';
+    galleryOverlay.hidden = false;
+
+    const { data, error } = await supabaseClient
+        .from(SHORT_VIDEOS_TABLE)
+        .select(VIDEO_SELECT_COLUMNS)
+        .eq('tema', tema)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+        galleryGrid.innerHTML = '<div class="gallery-empty">No hay videos en este tema.</div>';
+        return;
+    }
+
+    galleryGrid.innerHTML = data.map(item => `
+        <div class="gallery-card" data-video-id="${item.id}">
+            <div class="thumb">${ICONS.play}</div>
+            <div class="meta">
+                <div class="title">${escapeAttr(item.title || item.description || 'Sin titulo')}</div>
+                <div class="stats">👁 ${item.views || 0}</div>
+            </div>
+        </div>
+    `).join('');
+
+    galleryGrid.querySelectorAll('.gallery-card').forEach(card => {
+        card.addEventListener('click', () => {
+            closeGallery();
+            loadFeedWithSharedVideo(card.dataset.videoId);
+        });
+    });
+}
+
+function closeGallery() {
+    galleryOverlay.hidden = true;
+}
+
+galleryCloseBtn.addEventListener('click', closeGallery);
 
 /* ---------- Comentarios ---------- */
 
