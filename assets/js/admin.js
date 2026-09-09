@@ -17,6 +17,20 @@ function showDashboard() {
     loginCard.hidden = true;
     dashboard.hidden = false;
     loadVideoList();
+    loadTemaSuggestions();
+}
+
+async function loadTemaSuggestions() {
+    const datalist = document.getElementById('tema-suggestions');
+    const { data, error } = await supabaseClient
+        .from(SHORT_VIDEOS_TABLE)
+        .select('tema')
+        .not('tema', 'is', null);
+
+    if (error || !data) return;
+
+    const temas = [...new Set(data.map(row => row.tema).filter(Boolean))].sort();
+    datalist.innerHTML = temas.map(t => `<option value="${t}"></option>`).join('');
 }
 
 function showLogin() {
@@ -68,9 +82,16 @@ uploadForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = document.getElementById('videoInput');
     const descInput = document.getElementById('videoDescInput');
+    const temaInput = document.getElementById('videoTemaInput');
 
     if (!input.files || input.files.length === 0) {
         uploadStatus.textContent = 'Selecciona un video primero.';
+        uploadStatus.className = 'status-msg err';
+        return;
+    }
+
+    if (!temaInput.value.trim()) {
+        uploadStatus.textContent = 'Escribe un tema para clasificar el video.';
         uploadStatus.className = 'status-msg err';
         return;
     }
@@ -96,7 +117,12 @@ uploadForm.addEventListener('submit', async (e) => {
 
         const { error: insertError } = await supabaseClient
             .from(SHORT_VIDEOS_TABLE)
-            .insert({ description: descInput.value.trim(), storage_path: path, created_by: userId });
+            .insert({
+                description: descInput.value.trim(),
+                tema: temaInput.value.trim(),
+                storage_path: path,
+                created_by: userId
+            });
 
         if (insertError) throw insertError;
 
@@ -110,6 +136,7 @@ uploadForm.addEventListener('submit', async (e) => {
             uploadProgressBar.style.width = '0%';
             uploadStatus.textContent = '';
             loadVideoList();
+            loadTemaSuggestions();
         }, 900);
     } catch (err) {
         console.error(err);
@@ -127,7 +154,7 @@ async function loadVideoList() {
 
     const { data, error } = await supabaseClient
         .from(SHORT_VIDEOS_TABLE)
-        .select('id, description, storage_path, views, likes, created_at')
+        .select('id, description, tema, storage_path, views, likes, created_at')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
@@ -149,6 +176,7 @@ async function loadVideoList() {
         row.innerHTML = `
             <video src="${pub.publicUrl}" muted preload="metadata"></video>
             <div class="meta">
+                ${item.tema ? `<div class="tema-badge">${item.tema}</div>` : ''}
                 <div class="desc">${item.description || '(sin descripcion)'}</div>
                 <div class="stats">👁 ${item.views || 0} · ❤ ${item.likes || 0}</div>
             </div>

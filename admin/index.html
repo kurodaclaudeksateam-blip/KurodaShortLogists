@@ -52,6 +52,11 @@
                         <input type="file" id="videoInput" accept="video/*" required>
                     </div>
                     <div class="field">
+                        <label for="videoTemaInput">Tema</label>
+                        <input type="text" id="videoTemaInput" list="tema-suggestions" placeholder="Ej. Logistica, Rutas, Capacitacion..." required>
+                        <datalist id="tema-suggestions"></datalist>
+                    </div>
+                    <div class="field">
                         <label for="videoDescInput">Descripcion</label>
                         <textarea id="videoDescInput" rows="3" placeholder="Escribe la descripcion o titulo del video..."></textarea>
                     </div>

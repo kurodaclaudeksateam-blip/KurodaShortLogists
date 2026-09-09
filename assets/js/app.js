@@ -1,4 +1,8 @@
 const feedContainer = document.getElementById('feed-container');
+const searchToggleBtn = document.getElementById('search-toggle-btn');
+const searchBar = document.getElementById('search-bar');
+const searchInput = document.getElementById('search-input');
+const searchCloseBtn = document.getElementById('search-close-btn');
 
 const ICONS = {
     heart: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
@@ -28,13 +32,19 @@ const observer = new IntersectionObserver((entries) => {
     });
 }, observerOptions);
 
-function renderEmptyState() {
+function clearFeedDom() {
+    feedContainer.querySelectorAll('.video-wrapper').forEach(el => el.remove());
+}
+
+function renderEmptyState(searchTerm) {
+    const message = searchTerm
+        ? `No encontramos videos para "<strong>${searchTerm}</strong>".`
+        : 'Muy pronto encontraras aqui contenido de KURODA&amp;LOGIST.';
     feedContainer.insertAdjacentHTML('beforeend', `
         <div class="video-wrapper">
             <div class="empty-feed">
-                <div class="spinner" style="display:none;"></div>
-                <h3>Aun no hay videos</h3>
-                <p>Muy pronto encontraras aqui contenido de KURODA&amp;LOGIST.</p>
+                <h3>${searchTerm ? 'Sin resultados' : 'Aun no hay videos'}</h3>
+                <p>${message}</p>
             </div>
         </div>
     `);
@@ -88,31 +98,7 @@ async function likeVideo(id, actionBtn) {
     await supabaseClient.rpc('increment_video_likes', { p_id: id });
 }
 
-async function loadFeed() {
-    const nav = feedContainer.querySelector('.top-nav');
-    feedContainer.innerHTML = '';
-    feedContainer.appendChild(nav);
-    renderLoadingState();
-
-    const { data: videos, error } = await supabaseClient
-        .from(SHORT_VIDEOS_TABLE)
-        .select('id, title, description, storage_path, views, likes, created_at')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-    document.getElementById('loading-wrapper')?.remove();
-
-    if (error) {
-        console.error('Error cargando videos:', error);
-        renderErrorState('Verifica tu conexion e intenta nuevamente.');
-        return;
-    }
-
-    if (!videos || videos.length === 0) {
-        renderEmptyState();
-        return;
-    }
-
+function renderVideos(videos) {
     videos.forEach((item) => {
         const videoId = 'vid_' + item.id;
         const { data: pub } = supabaseClient.storage.from(SHORT_VIDEOS_BUCKET).getPublicUrl(item.storage_path);
@@ -126,6 +112,7 @@ async function loadFeed() {
                 <div class="bottom-shadow-overlay"></div>
 
                 <div class="video-info">
+                    ${item.tema ? `<div class="tema-badge">${item.tema}</div><br>` : ''}
                     <div class="username">KURODA&amp;LOGIST</div>
                     <div class="description">${description}</div>
                 </div>
@@ -192,4 +179,60 @@ async function loadFeed() {
     });
 }
 
-window.addEventListener('DOMContentLoaded', loadFeed);
+function sanitizeForFilter(term) {
+    return term.replace(/[,()%]/g, ' ').trim();
+}
+
+async function loadFeed(searchTerm) {
+    clearFeedDom();
+    renderLoadingState();
+
+    let query = supabaseClient
+        .from(SHORT_VIDEOS_TABLE)
+        .select('id, title, description, tema, storage_path, views, likes, created_at')
+        .eq('is_active', true);
+
+    const cleanTerm = searchTerm ? sanitizeForFilter(searchTerm) : '';
+    if (cleanTerm) {
+        query = query.or(`tema.ilike.%${cleanTerm}%,description.ilike.%${cleanTerm}%`);
+    }
+
+    const { data: videos, error } = await query.order('created_at', { ascending: false });
+
+    document.getElementById('loading-wrapper')?.remove();
+
+    if (error) {
+        console.error('Error cargando videos:', error);
+        renderErrorState('Verifica tu conexion e intenta nuevamente.');
+        return;
+    }
+
+    if (!videos || videos.length === 0) {
+        renderEmptyState(cleanTerm);
+        return;
+    }
+
+    renderVideos(videos);
+}
+
+let searchDebounce = null;
+function openSearch() {
+    searchBar.classList.add('active');
+    searchInput.focus();
+}
+function closeSearch() {
+    searchBar.classList.remove('active');
+    searchInput.value = '';
+    loadFeed();
+}
+
+searchToggleBtn.addEventListener('click', () => {
+    searchBar.classList.contains('active') ? closeSearch() : openSearch();
+});
+searchCloseBtn.addEventListener('click', closeSearch);
+searchInput.addEventListener('input', () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => loadFeed(searchInput.value), 350);
+});
+
+window.addEventListener('DOMContentLoaded', () => loadFeed());
