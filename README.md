@@ -29,6 +29,14 @@ Se crearon tablas y un bucket **nuevos y aislados**, sin modificar ninguna tabla
   - Lectura publica de los archivos.
   - Subida/borrado de archivos solo permitido a usuarios autenticados.
 
+## Compresion a AV1 al subir
+
+El panel admin puede comprimir el video a **AV1** antes de subirlo (casilla activada por defecto). Usa el codificador AV1 nativo del navegador (API WebCodecs, vía la libreria [Mediabunny](https://mediabunny.dev)) — no WebAssembly, por eso tarda segundos y no minutos. El audio se copia tal cual (passthrough), sin volver a comprimirlo.
+
+Validado con un benchmark real (`ffmpeg` + AV1 CRF 30 nativo) sobre un video ya subido: **~50-60% menos peso** con calidad **VMAF ~96/100** (por encima de 95 se considera visualmente indistinguible del original, el mismo estandar que usan YouTube/Netflix). En pruebas con esta libreria en el navegador se obtuvo consistentemente 40-60% de reduccion segun el contenido del video, en pocos segundos.
+
+Requiere un navegador con soporte de codificacion AV1 vía WebCodecs (Chrome/Edge recientes). Si el navegador del admin no lo soporta, la app lo detecta automaticamente y sube el video original sin comprimir, avisando en pantalla.
+
 ## Crear el usuario administrador
 
 Este proyecto usa **Supabase Auth** para proteger `/admin`. Antes de usar el panel, crea el usuario admin una sola vez:

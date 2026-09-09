@@ -288,6 +288,12 @@ body.page-admin {
 }
 .tab-btn.active { background: linear-gradient(90deg, var(--accent), #6a5cff); color: #04141a; }
 
+.checkbox-field label {
+    display: flex; align-items: flex-start; gap: 10px; font-size: 0.82rem; font-weight: 500;
+    color: var(--text-dim); cursor: pointer; line-height: 1.4;
+}
+.checkbox-field input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; accent-color: var(--accent); }
+
 .field select {
     width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.08);
     border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: #fff;
