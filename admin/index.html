@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Admin · KURODA&amp;LOGIST SHORT</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="page-admin">
+<div class="admin-scroll">
+    <div class="admin-shell">
+        <div class="admin-header">
+            <div class="brand">
+                <span class="dot"></span>
+                <h1>Panel Admin</h1>
+            </div>
+            <a href="../index.html">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                Volver al feed
+            </a>
+        </div>
+
+        <!-- Login -->
+        <div class="card" id="login-card">
+            <div class="lock-icon-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h2 style="text-align:center;">Acceso restringido</h2>
+            <p class="subtitle" style="text-align:center;">Inicia sesion para administrar el contenido.</p>
+            <form id="login-form">
+                <div class="field">
+                    <label for="login-email">Correo</label>
+                    <input type="email" id="login-email" placeholder="admin@empresa.com" required autocomplete="username">
+                </div>
+                <div class="field">
+                    <label for="login-password">Contrasena</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary" id="login-btn">Entrar</button>
+                <div class="status-msg" id="login-status"></div>
+            </form>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" hidden>
+            <div class="card">
+                <h2>Subir video</h2>
+                <p class="subtitle">Se guarda en Supabase Storage y aparece de inmediato en el feed.</p>
+                <form id="upload-form">
+                    <div class="field">
+                        <label for="videoInput">Archivo de video</label>
+                        <input type="file" id="videoInput" accept="video/*" required>
+                    </div>
+                    <div class="field">
+                        <label for="videoDescInput">Descripcion</label>
+                        <textarea id="videoDescInput" rows="3" placeholder="Escribe la descripcion o titulo del video..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="upload-btn">Guardar e Inyectar</button>
+                    <div class="progress-track" id="upload-progress"><div class="bar" id="upload-progress-bar"></div></div>
+                    <div class="status-msg" id="upload-status"></div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Videos publicados</h2>
+                <p class="subtitle">Administra el contenido activo del feed.</p>
+                <div class="video-list" id="video-list">
+                    <p class="subtitle">Cargando...</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <button class="btn btn-ghost" id="logout-btn">Cerrar sesion</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../assets/js/supabase-client.js"></script>
+<script src="../assets/js/admin.js"></script>
+</body>
+</html>
