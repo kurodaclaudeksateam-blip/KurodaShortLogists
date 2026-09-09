@@ -3,6 +3,25 @@ const searchToggleBtn = document.getElementById('search-toggle-btn');
 const searchBar = document.getElementById('search-bar');
 const searchInput = document.getElementById('search-input');
 const searchCloseBtn = document.getElementById('search-close-btn');
+const areaToggleBtn = document.getElementById('area-toggle-btn');
+const areaModal = document.getElementById('area-modal');
+const areaOptions = document.getElementById('area-options');
+const areaSkipBtn = document.getElementById('area-skip-btn');
+
+const AREA_KEY = 'kuroda_selected_area';
+const AREA_ALL = 'ALL';
+
+function getSelectedArea() { return localStorage.getItem(AREA_KEY); }
+function setSelectedArea(area) { localStorage.setItem(AREA_KEY, area); }
+
+function shuffleArray(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
 
 const ICONS = {
     heart: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
@@ -112,7 +131,7 @@ function renderVideos(videos) {
                 <div class="bottom-shadow-overlay"></div>
 
                 <div class="video-info">
-                    ${item.tema ? `<div class="tema-badge">${item.tema}</div><br>` : ''}
+                    ${(item.area || item.tema) ? `<div>${item.area ? `<span class="area-badge">${item.area}</span>` : ''}${item.tema ? `<span class="tema-badge">${item.tema}</span>` : ''}</div>` : ''}
                     <div class="username">KURODA&amp;LOGIST</div>
                     <div class="description">${description}</div>
                 </div>
@@ -189,12 +208,16 @@ async function loadFeed(searchTerm) {
 
     let query = supabaseClient
         .from(SHORT_VIDEOS_TABLE)
-        .select('id, title, description, tema, storage_path, views, likes, created_at')
+        .select('id, title, description, tema, area, storage_path, views, likes, created_at')
         .eq('is_active', true);
 
     const cleanTerm = searchTerm ? sanitizeForFilter(searchTerm) : '';
+    const selectedArea = getSelectedArea();
+
     if (cleanTerm) {
         query = query.or(`tema.ilike.%${cleanTerm}%,description.ilike.%${cleanTerm}%`);
+    } else if (selectedArea && selectedArea !== AREA_ALL) {
+        query = query.eq('area', selectedArea);
     }
 
     const { data: videos, error } = await query.order('created_at', { ascending: false });
@@ -212,8 +235,39 @@ async function loadFeed(searchTerm) {
         return;
     }
 
-    renderVideos(videos);
+    renderVideos(cleanTerm ? videos : shuffleArray(videos));
 }
+
+async function initAreaPicker() {
+    const { data: areas } = await supabaseClient.from('areas').select('name').order('name');
+
+    if (!areas || areas.length === 0) {
+        loadFeed();
+        return;
+    }
+
+    areaOptions.innerHTML = areas.map(a =>
+        `<button class="area-option-btn" data-area="${a.name}">${a.name}</button>`
+    ).join('');
+
+    areaOptions.querySelectorAll('.area-option-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setSelectedArea(btn.dataset.area);
+            areaModal.hidden = true;
+            loadFeed();
+        });
+    });
+
+    areaModal.hidden = false;
+}
+
+areaSkipBtn.addEventListener('click', () => {
+    setSelectedArea(AREA_ALL);
+    areaModal.hidden = true;
+    loadFeed();
+});
+
+areaToggleBtn.addEventListener('click', initAreaPicker);
 
 let searchDebounce = null;
 function openSearch() {
@@ -235,4 +289,10 @@ searchInput.addEventListener('input', () => {
     searchDebounce = setTimeout(() => loadFeed(searchInput.value), 350);
 });
 
-window.addEventListener('DOMContentLoaded', () => loadFeed());
+window.addEventListener('DOMContentLoaded', () => {
+    if (getSelectedArea()) {
+        loadFeed();
+    } else {
+        initAreaPicker();
+    }
+});

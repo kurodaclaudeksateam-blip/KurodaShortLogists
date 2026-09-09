@@ -43,34 +43,96 @@
 
         <!-- Dashboard -->
         <div id="dashboard" hidden>
-            <div class="card">
-                <h2>Subir video</h2>
-                <p class="subtitle">Se guarda en Supabase Storage y aparece de inmediato en el feed.</p>
-                <form id="upload-form">
-                    <div class="field">
-                        <label for="videoInput">Archivo de video</label>
-                        <input type="file" id="videoInput" accept="video/*" required>
-                    </div>
-                    <div class="field">
-                        <label for="videoTemaInput">Tema</label>
-                        <input type="text" id="videoTemaInput" list="tema-suggestions" placeholder="Ej. Logistica, Rutas, Capacitacion..." required>
-                        <datalist id="tema-suggestions"></datalist>
-                    </div>
-                    <div class="field">
-                        <label for="videoDescInput">Descripcion</label>
-                        <textarea id="videoDescInput" rows="3" placeholder="Escribe la descripcion o titulo del video..."></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary" id="upload-btn">Guardar e Inyectar</button>
-                    <div class="progress-track" id="upload-progress"><div class="bar" id="upload-progress-bar"></div></div>
-                    <div class="status-msg" id="upload-status"></div>
-                </form>
+            <div class="admin-tabs" id="admin-tabs">
+                <button class="tab-btn active" data-tab="upload">Subir</button>
+                <button class="tab-btn" data-tab="content">Videos</button>
+                <button class="tab-btn" data-tab="areas">Areas</button>
+                <button class="tab-btn" data-tab="temas">Temas</button>
+                <button class="tab-btn" data-tab="analytics">Analiticas</button>
             </div>
 
-            <div class="card">
-                <h2>Videos publicados</h2>
-                <p class="subtitle">Administra el contenido activo del feed.</p>
-                <div class="video-list" id="video-list">
-                    <p class="subtitle">Cargando...</p>
+            <!-- Subir video -->
+            <div class="tab-panel" data-panel="upload">
+                <div class="card">
+                    <h2>Subir video</h2>
+                    <p class="subtitle">Se guarda en Supabase Storage y aparece de inmediato en el feed.</p>
+                    <form id="upload-form">
+                        <div class="field">
+                            <label for="videoInput">Archivo de video</label>
+                            <input type="file" id="videoInput" accept="video/*" required>
+                        </div>
+                        <div class="field">
+                            <label for="videoAreaInput">Area</label>
+                            <select id="videoAreaInput" required>
+                                <option value="" disabled selected>Selecciona un area...</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="videoTemaInput">Tema</label>
+                            <select id="videoTemaInput" required>
+                                <option value="" disabled selected>Selecciona un tema...</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="videoDescInput">Descripcion</label>
+                            <textarea id="videoDescInput" rows="3" placeholder="Escribe la descripcion o titulo del video..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="upload-btn">Guardar e Inyectar</button>
+                        <div class="progress-track" id="upload-progress"><div class="bar" id="upload-progress-bar"></div></div>
+                        <div class="status-msg" id="upload-status"></div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Videos publicados -->
+            <div class="tab-panel" data-panel="content" hidden>
+                <div class="card">
+                    <h2>Videos publicados</h2>
+                    <p class="subtitle">Administra el contenido activo del feed.</p>
+                    <div class="video-list" id="video-list">
+                        <p class="subtitle">Cargando...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Areas -->
+            <div class="tab-panel" data-panel="areas" hidden>
+                <div class="card">
+                    <h2>Areas de la empresa</h2>
+                    <p class="subtitle">Se muestran como opciones al abrir la app por primera vez.</p>
+                    <form id="area-form" class="inline-form">
+                        <input type="text" id="area-name-input" placeholder="Ej. Almacen, Rutas, Ventas..." required>
+                        <button type="submit" class="btn btn-primary">Agregar</button>
+                    </form>
+                    <div class="status-msg" id="area-status"></div>
+                    <div class="catalog-list" id="area-list"><p class="subtitle">Cargando...</p></div>
+                </div>
+            </div>
+
+            <!-- Temas -->
+            <div class="tab-panel" data-panel="temas" hidden>
+                <div class="card">
+                    <h2>Temas</h2>
+                    <p class="subtitle">Clasifican los videos dentro de cada area.</p>
+                    <form id="tema-form" class="inline-form">
+                        <input type="text" id="tema-name-input" placeholder="Ej. Seguridad, Empaque, Rutas..." required>
+                        <button type="submit" class="btn btn-primary">Agregar</button>
+                    </form>
+                    <div class="status-msg" id="tema-status"></div>
+                    <div class="catalog-list" id="tema-list"><p class="subtitle">Cargando...</p></div>
+                </div>
+            </div>
+
+            <!-- Analiticas -->
+            <div class="tab-panel" data-panel="analytics" hidden>
+                <div class="card">
+                    <h2>Analiticas</h2>
+                    <p class="subtitle">Top 100 videos del feed.</p>
+                    <div class="sub-tabs">
+                        <button class="sub-tab-btn active" data-metric="views">Mas vistos</button>
+                        <button class="sub-tab-btn" data-metric="likes">Mas likes</button>
+                    </div>
+                    <div class="ranking-list" id="ranking-list"><p class="subtitle">Cargando...</p></div>
                 </div>
             </div>
 
