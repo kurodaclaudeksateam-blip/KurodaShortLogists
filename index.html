@@ -36,12 +36,32 @@
         </div>
     </div>
 
+    <div class="toast" id="toast"></div>
+
     <div class="area-modal-overlay" id="area-modal" hidden>
         <div class="area-modal">
             <h2>¿De que area eres?</h2>
             <p class="subtitle">Te mostraremos primero los videos de tu area.</p>
             <div class="area-options" id="area-options"></div>
             <button class="btn btn-ghost" id="area-skip-btn">Ver todos los videos</button>
+        </div>
+    </div>
+
+    <div class="comments-overlay" id="comments-overlay" hidden>
+        <div class="comments-panel">
+            <div class="comments-header">
+                <h3>Comentarios</h3>
+                <button class="icon-btn" id="comments-close-btn" aria-label="Cerrar comentarios">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="comments-list" id="comments-list"></div>
+            <form class="comments-input-row" id="comment-form">
+                <input type="text" id="comment-input" placeholder="Escribe un comentario..." maxlength="500" required autocomplete="off">
+                <button type="submit" class="comment-send-btn" aria-label="Enviar comentario">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+            </form>
         </div>
     </div>
 

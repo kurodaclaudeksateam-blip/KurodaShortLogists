@@ -4,7 +4,7 @@ Feed de videos cortos estilo TikTok/Reels para contenido explicativo de la empre
 
 ## Estructura
 
-- `index.html` — Feed publico. Al entrar por primera vez pregunta el area del usuario (localStorage recuerda la eleccion) y muestra los videos de esa area en orden aleatorio; cualquier visitante puede ver, dar like, ver el contador de vistas y buscar por tema/descripcion.
+- `index.html` — Feed publico. Al entrar por primera vez pregunta el area del usuario (localStorage recuerda la eleccion) y muestra los videos de esa area en orden aleatorio; cualquier visitante puede ver, dar like, comentar, compartir (o copiar el enlace directo al video) y buscar por tema/descripcion.
 - `admin/index.html` — Panel de control en la ruta `/admin`, protegido con Supabase Auth. Pestanas: Subir video, Videos publicados, Areas, Temas y Analiticas (top 100 por vistas o likes).
 - `assets/js/supabase-client.js` — Configuracion del cliente de Supabase (URL + clave publica `anon`, protegida por Row Level Security).
 - `assets/js/app.js` — Logica del feed publico (selector de area, busqueda, autoplay al hacer scroll, likes, vistas, controles de reproduccion).
@@ -25,6 +25,9 @@ Se crearon tablas y un bucket **nuevos y aislados**, sin modificar ninguna tabla
 - Tablas `public.areas` y `public.temas` (catalogo administrable desde el panel):
   - Lectura publica (la necesita el selector de area al abrir la app).
   - Alta/baja solo permitida a usuarios autenticados.
+- Tabla `public.video_comments` (comentarios publicos, sin necesidad de cuenta):
+  - Lectura e insercion publica; borrado (moderacion) solo para usuarios autenticados.
+  - Un trigger mantiene `short_videos.comments_count` sincronizado automaticamente.
 - Bucket de Storage `short-videos` (publico de solo lectura):
   - Lectura publica de los archivos.
   - Subida/borrado de archivos solo permitido a usuarios autenticados.

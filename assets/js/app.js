@@ -26,9 +26,50 @@ function shuffleArray(arr) {
 const ICONS = {
     heart: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
     eye: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+    comment: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
+    share: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
     rewind: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>',
     forward: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>'
 };
+
+let toastTimeout = null;
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('active');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.remove('active'), 2200);
+}
+
+function getVideoShareUrl(id) {
+    return `${location.origin}${location.pathname}?v=${id}`;
+}
+
+async function shareVideo(id, description) {
+    const url = getVideoShareUrl(id);
+
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: 'KURODA&LOGIST', text: description || 'Mira este video', url });
+        } catch (err) {
+            if (err.name !== 'AbortError') console.error('Error al compartir:', err);
+        }
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(url);
+        showToast('Enlace copiado al portapapeles');
+    } catch (err) {
+        console.error('Error al copiar el enlace:', err);
+        showToast('No se pudo copiar el enlace');
+    }
+}
+
+function escapeAttr(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
 
 function likedKey(id) { return 'liked_' + id; }
 
@@ -141,9 +182,16 @@ function renderVideos(videos) {
                         <div class="icon-circle">${ICONS.heart}</div>
                         <span class="count">${item.likes || 0}</span>
                     </div>
+                    <div class="action-btn" data-comment-id="${item.id}">
+                        <div class="icon-circle">${ICONS.comment}</div>
+                        <span class="count">${item.comments_count || 0}</span>
+                    </div>
                     <div class="action-btn">
                         <div class="icon-circle">${ICONS.eye}</div>
                         <span class="count">${item.views || 0}</span>
+                    </div>
+                    <div class="action-btn" data-share-id="${item.id}" data-share-desc="${escapeAttr(description)}">
+                        <div class="icon-circle">${ICONS.share}</div>
                     </div>
                 </div>
 
@@ -181,6 +229,16 @@ function renderVideos(videos) {
             likeVideo(this.dataset.likeId, this);
         });
 
+        wrapper.querySelector('.action-btn[data-share-id]')?.addEventListener('click', function (e) {
+            e.stopPropagation();
+            shareVideo(this.dataset.shareId, this.dataset.shareDesc);
+        });
+
+        wrapper.querySelector('.action-btn[data-comment-id]')?.addEventListener('click', function (e) {
+            e.stopPropagation();
+            openComments(this.dataset.commentId);
+        });
+
         wrapper.querySelectorAll('.control-btn[data-skip]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -208,7 +266,7 @@ async function loadFeed(searchTerm) {
 
     let query = supabaseClient
         .from(SHORT_VIDEOS_TABLE)
-        .select('id, title, description, tema, area, storage_path, views, likes, created_at')
+        .select('id, title, description, tema, area, storage_path, views, likes, comments_count, created_at')
         .eq('is_active', true);
 
     const cleanTerm = searchTerm ? sanitizeForFilter(searchTerm) : '';
@@ -237,6 +295,152 @@ async function loadFeed(searchTerm) {
 
     renderVideos(cleanTerm ? videos : shuffleArray(videos));
 }
+
+const VIDEO_SELECT_COLUMNS = 'id, title, description, tema, area, storage_path, views, likes, comments_count, created_at';
+
+async function loadFeedWithSharedVideo(videoId) {
+    clearFeedDom();
+    renderLoadingState();
+    history.replaceState({}, '', location.pathname);
+
+    const { data: sharedVideo } = await supabaseClient
+        .from(SHORT_VIDEOS_TABLE)
+        .select(VIDEO_SELECT_COLUMNS)
+        .eq('id', videoId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    document.getElementById('loading-wrapper')?.remove();
+
+    if (!sharedVideo) {
+        renderErrorState('El video que buscas ya no esta disponible.');
+        return;
+    }
+
+    renderVideos([sharedVideo]);
+
+    const selectedArea = getSelectedArea();
+    let restQuery = supabaseClient
+        .from(SHORT_VIDEOS_TABLE)
+        .select(VIDEO_SELECT_COLUMNS)
+        .eq('is_active', true)
+        .neq('id', videoId);
+    if (selectedArea && selectedArea !== AREA_ALL) restQuery = restQuery.eq('area', selectedArea);
+
+    const { data: rest } = await restQuery.order('created_at', { ascending: false });
+    if (rest && rest.length) renderVideos(shuffleArray(rest));
+}
+
+/* ---------- Comentarios ---------- */
+
+const commentsOverlay = document.getElementById('comments-overlay');
+const commentsList = document.getElementById('comments-list');
+const commentForm = document.getElementById('comment-form');
+const commentInput = document.getElementById('comment-input');
+const commentsCloseBtn = document.getElementById('comments-close-btn');
+
+const COMMENTER_NAME_KEY = 'kuroda_commenter_name';
+let activeCommentsVideoId = null;
+
+function getCommenterName() {
+    let name = localStorage.getItem(COMMENTER_NAME_KEY);
+    if (!name) {
+        name = (prompt('¿Con que nombre quieres comentar?', '') || '').trim().slice(0, 60);
+        if (!name) name = 'Anonimo';
+        localStorage.setItem(COMMENTER_NAME_KEY, name);
+    }
+    return name;
+}
+
+function timeAgo(dateStr) {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'ahora';
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d`;
+    return new Date(dateStr).toLocaleDateString();
+}
+
+function renderComments(comments) {
+    if (!comments || comments.length === 0) {
+        commentsList.innerHTML = '<div class="comments-empty">Se el primero en comentar.</div>';
+        return;
+    }
+    commentsList.innerHTML = comments.map(c => `
+        <div class="comment-row">
+            <div class="avatar"></div>
+            <div class="body">
+                <span class="author">${escapeAttr(c.author_name)}</span><span class="time">${timeAgo(c.created_at)}</span>
+                <div class="text">${escapeAttr(c.content)}</div>
+            </div>
+        </div>
+    `).join('');
+    commentsList.scrollTop = 0;
+}
+
+async function loadComments(videoId) {
+    commentsList.innerHTML = '<div class="comments-empty">Cargando...</div>';
+    const { data, error } = await supabaseClient
+        .from('video_comments')
+        .select('id, author_name, content, created_at')
+        .eq('video_id', videoId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        commentsList.innerHTML = '<div class="comments-empty">No se pudieron cargar los comentarios.</div>';
+        return;
+    }
+    renderComments(data);
+}
+
+function openComments(videoId) {
+    activeCommentsVideoId = videoId;
+    commentsOverlay.hidden = false;
+    loadComments(videoId);
+}
+
+function closeComments() {
+    commentsOverlay.hidden = true;
+    activeCommentsVideoId = null;
+    commentInput.value = '';
+}
+
+function updateCommentCountBadge(videoId, delta) {
+    const wrapper = document.querySelector(`.video-wrapper[data-video-id="${videoId}"]`);
+    const countSpan = wrapper?.querySelector('.action-btn[data-comment-id] .count');
+    if (countSpan) countSpan.textContent = Math.max(0, parseInt(countSpan.textContent, 10) + delta);
+}
+
+commentsCloseBtn.addEventListener('click', closeComments);
+commentsOverlay.addEventListener('click', (e) => { if (e.target === commentsOverlay) closeComments(); });
+
+commentForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const content = commentInput.value.trim();
+    if (!content || !activeCommentsVideoId) return;
+
+    const authorName = getCommenterName();
+    commentInput.value = '';
+
+    const { error } = await supabaseClient.from('video_comments').insert({
+        video_id: activeCommentsVideoId,
+        author_name: authorName,
+        content
+    });
+
+    if (error) {
+        console.error('Error al comentar:', error);
+        showToast('No se pudo publicar el comentario.');
+        return;
+    }
+
+    updateCommentCountBadge(activeCommentsVideoId, 1);
+    loadComments(activeCommentsVideoId);
+});
 
 async function initAreaPicker() {
     const { data: areas } = await supabaseClient.from('areas').select('name').order('name');
@@ -290,7 +494,10 @@ searchInput.addEventListener('input', () => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
-    if (getSelectedArea()) {
+    const sharedVideoId = new URLSearchParams(location.search).get('v');
+    if (sharedVideoId) {
+        loadFeedWithSharedVideo(sharedVideoId);
+    } else if (getSelectedArea()) {
         loadFeed();
     } else {
         initAreaPicker();
