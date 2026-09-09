@@ -180,7 +180,7 @@ function renderVideos(videos) {
                 <div class="bottom-shadow-overlay"></div>
 
                 <div class="video-info">
-                    ${(item.area || item.tema) ? `<div>${item.area ? `<span class="area-badge">${item.area}</span>` : ''}${item.tema ? `<button class="tema-badge" data-tema="${escapeAttr(item.tema)}">${item.tema}</button>` : ''}</div>` : ''}
+                    ${(item.area || item.tema) ? `<div>${item.area ? `<button class="area-badge" data-area-gallery="${escapeAttr(item.area)}">${item.area}</button>` : ''}${item.tema ? `<button class="tema-badge" data-tema="${escapeAttr(item.tema)}">${item.tema}</button>` : ''}</div>` : ''}
                     <div class="username">KURODA&amp;LOGIST</div>
                     <div class="description">${description}</div>
                 </div>
@@ -258,7 +258,12 @@ function renderVideos(videos) {
 
         wrapper.querySelector('.tema-badge[data-tema]')?.addEventListener('click', function (e) {
             e.stopPropagation();
-            openTemaGallery(this.dataset.tema);
+            openGallery('tema', this.dataset.tema);
+        });
+
+        wrapper.querySelector('.area-badge[data-area-gallery]')?.addEventListener('click', function (e) {
+            e.stopPropagation();
+            openGallery('area', this.dataset.areaGallery);
         });
 
         wrapper.querySelectorAll('.control-btn[data-skip]').forEach(btn => {
@@ -360,20 +365,20 @@ const galleryTitle = document.getElementById('gallery-title');
 const galleryGrid = document.getElementById('gallery-grid');
 const galleryCloseBtn = document.getElementById('gallery-close-btn');
 
-async function openTemaGallery(tema) {
-    galleryTitle.textContent = tema;
+async function openGallery(field, value) {
+    galleryTitle.textContent = value;
     galleryGrid.innerHTML = '<div class="gallery-empty">Cargando...</div>';
     galleryOverlay.hidden = false;
 
     const { data, error } = await supabaseClient
         .from(SHORT_VIDEOS_TABLE)
         .select(VIDEO_SELECT_COLUMNS)
-        .eq('tema', tema)
+        .eq(field, value)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
     if (error || !data || data.length === 0) {
-        galleryGrid.innerHTML = '<div class="gallery-empty">No hay videos en este tema.</div>';
+        galleryGrid.innerHTML = '<div class="gallery-empty">No hay videos aqui todavia.</div>';
         return;
     }
 
